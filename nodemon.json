@@ -1,0 +1,13 @@
+{
+    "watch": ["."],
+    "ext": "js,json",
+    "ignore": [
+        ".git/",
+        "node_modules/",
+        "reminders.db",
+        "reminders.db-journal",
+        "logs/"
+    ],
+    "exec": "node index.js",
+    "signal": "SIGTERM"
+}

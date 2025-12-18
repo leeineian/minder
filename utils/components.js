@@ -1,12 +1,3 @@
-// Component V2 Builder Utility
-// Type IDs:
-// 17: Container
-// 9: Section
-// 10: TextDisplay
-// 11: Thumbnail
-// 2: Button
-// 1: ActionRow
-
 class V2Builder {
     static container(components = []) {
         return {

@@ -1,25 +1,21 @@
-const fs = require('fs');
-const path = require('path');
 const { MessageFlags } = require('discord.js');
 const V2Builder = require('./components');
+const db = require('./database');
 
-const LOGGING_FILE = path.join(__dirname, '../logging.json');
-
-// Helper to load/save logging config
+// In-memory cache
 let loggingConfig = {};
+
+// Load on startup
 try {
-    if (fs.existsSync(LOGGING_FILE)) {
-        loggingConfig = JSON.parse(fs.readFileSync(LOGGING_FILE, 'utf8'));
-    }
+    loggingConfig = db.getAllGuildConfigs();
+    console.log(`[Logger] Loaded configs for ${Object.keys(loggingConfig).length} guilds.`);
 } catch (err) {
-    console.error('Failed to load logging config:', err);
+    console.error('Failed to load logging config from DB:', err);
 }
 
-async function saveLoggingConfig() {
-    try {
-        await fs.promises.writeFile(LOGGING_FILE, JSON.stringify(loggingConfig, null, 2));
-    } catch (err) {
-        console.error('Failed to save logging config:', err);
+function saveGuildConfig(guildId) {
+    if (loggingConfig[guildId]) {
+        db.setGuildConfig(guildId, loggingConfig[guildId]);
     }
 }
 
@@ -27,15 +23,24 @@ function getLoggingConfig() {
     return loggingConfig;
 }
 
-async function logAction(client, guildId, user, action, descriptions) {
-    if (!guildId || !loggingConfig[guildId] || !loggingConfig[guildId].enabled || !loggingConfig[guildId].channelId) return;
+// Ensure init/get helper
+function getGuildConfig(guildId) {
+    if (!loggingConfig[guildId]) {
+        loggingConfig[guildId] = { enabled: false, channelId: null };
+    }
+    return loggingConfig[guildId];
+}
 
-    const channelId = loggingConfig[guildId].channelId;
+async function logAction(client, guildId, user, action, descriptions) {
+    if (!guildId) return;
+    
+    const config = loggingConfig[guildId];
+    if (!config || !config.enabled || !config.channelId) return;
+
+    const channelId = config.channelId;
     const channel = client.channels.cache.get(channelId);
     
     if (!channel) return;
-
-
 
     // Components V2 Implementation
     const v2Container = V2Builder.container([
@@ -60,6 +65,7 @@ async function logAction(client, guildId, user, action, descriptions) {
 
 module.exports = {
     getLoggingConfig,
-    saveLoggingConfig,
+    getGuildConfig,
+    saveGuildConfig,
     logAction
 };

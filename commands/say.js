@@ -15,7 +15,11 @@ module.exports = {
             return interaction.reply({ content: 'Message is too long (limit is 2000 characters).', flags: MessageFlags.Ephemeral });
         }
 
-		await interaction.reply({ content: userInput, flags: MessageFlags.Ephemeral });
+		await interaction.reply({ 
+            content: userInput, 
+            flags: MessageFlags.Ephemeral,
+            allowedMentions: { parse: [] } 
+        });
         return `Message: ${userInput}`;
 	},
 };

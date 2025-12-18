@@ -45,7 +45,13 @@ module.exports = {
             while (!catUrl && attempts < 3) {
                 attempts++;
                 try {
-                    const response = await fetch('https://api.thecatapi.com/v1/images/search');
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+                    const response = await fetch('https://api.thecatapi.com/v1/images/search', {
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
                     if (!response.ok) throw new Error(`API status: ${response.status}`);
                     
                     const data = await response.json();

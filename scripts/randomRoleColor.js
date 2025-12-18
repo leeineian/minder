@@ -9,13 +9,13 @@ function getRandomColor() {
 
 async function updateRoleColor(client) {
     try {
-        const guild = await client.guilds.fetch(GUILD_ID);
+        const guild = client.guilds.cache.get(GUILD_ID) ?? await client.guilds.fetch(GUILD_ID);
         if (!guild) {
             console.warn(`[RandomColor] Guild ${GUILD_ID} not found/cached.`);
             return;
         }
 
-        const role = await guild.roles.fetch(ROLE_ID);
+        const role = guild.roles.cache.get(ROLE_ID) ?? await guild.roles.fetch(ROLE_ID);
         if (!role) {
             console.warn(`[RandomColor] Role ${ROLE_ID} not found in guild.`);
             return;
@@ -24,18 +24,23 @@ async function updateRoleColor(client) {
         const newColor = getRandomColor();
         await role.edit({ colors: { primaryColor: newColor } });
         
-        console.log(`[RandomColor] Updated role color to #${newColor.toString(16).padStart(6, '0')}`);
+        currentColor = `#${newColor.toString(16).padStart(6, '0').toUpperCase()}`;
+        console.log(`[RandomColor] Updated role color to ${currentColor}`);
 
     } catch (error) {
         console.error('[RandomColor] Failed to update role color:', error);
     }
 }
 
+let nextUpdateTimestamp = 0;
+let currentColor = '#000000';
+
 function scheduleNextUpdate(client) {
     // Random minute between MIN and MAX (inclusive)
     const minutes = Math.floor(Math.random() * (MAX_MINUTES - MIN_MINUTES + 1)) + MIN_MINUTES;
     const ms = minutes * 60 * 1000;
     
+    nextUpdateTimestamp = Date.now() + ms;
     console.log(`[RandomColor] Next update in ${minutes} minutes.`);
     
     setTimeout(async () => {
@@ -52,5 +57,7 @@ module.exports = {
         // Then start the loop
         scheduleNextUpdate(client);
     },
-    updateRoleColor
+    updateRoleColor,
+    getNextUpdateTimestamp: () => nextUpdateTimestamp,
+    getCurrentColor: () => currentColor
 };

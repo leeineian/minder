@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags } = require('discord.js');
-const { getLoggingConfig, saveLoggingConfig } = require('../utils/logger');
+const {  getGuildConfig, saveGuildConfig } = require('../utils/logger');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -19,12 +19,8 @@ module.exports = {
             return interaction.reply({ content: 'You do not have permission to use this command.', flags: MessageFlags.Ephemeral });
         }
 
-        const config = getLoggingConfig();
         const guildId = interaction.guildId;
-        
-        if (!config[guildId]) {
-            config[guildId] = { enabled: false, channelId: null };
-        }
+        const config = getGuildConfig(guildId); // Use helper
 
         const channel = interaction.options.getChannel('channel');
         const toggle = interaction.options.getBoolean('toggle');
@@ -32,15 +28,28 @@ module.exports = {
         let response = '';
 
         if (channel) {
-            config[guildId].channelId = channel.id;
+            config.channelId = channel.id;
             response += `Logging channel set to ${channel}.\n`;
         }
 
         if (toggle !== null) {
-            config[guildId].enabled = toggle;
+            config.enabled = toggle;
             response += `Logging ${toggle ? 'enabled' : 'disabled'}.\n`;
         }
         
-        await saveLoggingConfig();
-	},
+        // Save for this guild only
+        saveGuildConfig(guildId);
+
+        if (response) {
+            await interaction.reply({ 
+                content: response, 
+                allowedMentions: { parse: [] } 
+            });
+        } else {
+            await interaction.reply({ 
+                content: 'No valid options provided. Usage: `/log channel: #channel` or `/log toggle: true/false`', 
+                flags: MessageFlags.Ephemeral 
+            });
+        }
+    },
 };

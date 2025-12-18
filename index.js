@@ -1,9 +1,13 @@
 require('dotenv').config();
+const { performance } = require('perf_hooks');
+const startTime = performance.now();
+
 const fs = require('fs');
 const path = require('path');
-const { Client, Collection, Events, GatewayIntentBits, ActivityType, PermissionFlagsBits, MessageFlags } = require('discord.js');
-const { logAction } = require('./utils/logger');
+const { Client, Collection, Events, GatewayIntentBits, MessageFlags } = require('discord.js');
 
+
+const { logAction, getLoggingConfig } = require('./utils/logger');
 const V2Builder = require('./utils/components');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -42,20 +46,20 @@ if (fs.existsSync(buttonsPath)) {
 const db = require('./utils/database');
 const reminderCommand = require('./commands/reminder');
 const randomRoleColor = require('./scripts/randomRoleColor');
+const statusRotator = require('./scripts/statusRotator');
 
 client.once(Events.ClientReady, async c => {
-	console.log(`Ready! Logged in as ${c.user.tag}`);
-	client.user.setPresence({
-		activities: [{ name: 'Custom Status', type: ActivityType.Custom, state: 'Minding my own business' }],
-		status: 'dnd',
-	});
+    const duration = (performance.now() - startTime).toFixed(2);
+	console.log(`Ready! Logged in as ${c.user.tag} (Startup: ${duration}ms)`);
 
     // Start Background Scripts
+    statusRotator.start(client);
     randomRoleColor.start(client);
 
     // Restore Reminders
     try {
-        const pending = await db.getAllPendingReminders();
+        // Synchronous call - no await
+        const pending = db.getAllPendingReminders();
         console.log(`Restoring ${pending.length} pending reminders...`);
         
         let restoredCount = 0;
@@ -146,8 +150,11 @@ client.on(Events.InteractionCreate, async interaction => {
         }
 
         // Auto-Logging
-        const finalDetails = logDetails || formatCommandOptions(interaction);
-        logAction(client, interaction.guildId, interaction.user, `Used /${interaction.commandName}`, finalDetails);
+        const config = getLoggingConfig();
+        if (interaction.guildId && config[interaction.guildId]?.enabled) {
+            const finalDetails = logDetails || formatCommandOptions(interaction);
+            logAction(client, interaction.guildId, interaction.user, `Used /${interaction.commandName}`, finalDetails);
+        }
 
     } catch (error) {
         console.error('Uncaptured interaction error:', error);

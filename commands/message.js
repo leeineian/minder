@@ -1,9 +1,10 @@
-const { SlashCommandBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags, PermissionFlagsBits } = require('discord.js');
 
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('message')
 		.setDescription('Sends a message to the channel.')
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 		.addStringOption(option =>
 			option.setName('message')
 				.setDescription('The message to send')
@@ -16,7 +17,10 @@ module.exports = {
         }
 
 		try {
-			await interaction.channel.send(userInput);
+			await interaction.channel.send({ 
+                content: userInput, 
+                allowedMentions: { parse: [] } 
+            });
 			await interaction.reply({ content: 'Message sent!', flags: MessageFlags.Ephemeral });
             return `Channel: ${interaction.channel}\nMessage: ${userInput}`;
 		} catch (error) {

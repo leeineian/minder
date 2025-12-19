@@ -1,16 +1,65 @@
 require('dotenv').config();
 const { performance } = require('perf_hooks');
-const startTime = performance.now();
-
 const fs = require('fs');
 const path = require('path');
-const { Client, Collection, Events, GatewayIntentBits, MessageFlags } = require('discord.js');
 
+// Discord.js
+const { Client, Collection, Events, GatewayIntentBits, MessageFlags, REST, Routes } = require('discord.js');
+const chalk = require('chalk');
 
+// Utilities
 const { logAction, getLoggingConfig } = require('./utils/logger');
 const V2Builder = require('./utils/components');
+const db = require('./utils/database');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+// Commands & Scripts
+const reminderCommand = require('./commands/reminder');
+const randomRoleColor = require('./scripts/randomRoleColor');
+const statusRotator = require('./scripts/statusRotator');
+
+const startTime = performance.now();
+
+// --- DEPLOYMENT LOGIC START ---
+const deployCommands = async () => {
+    try {
+        const commands = [];
+        const commandsPath = path.join(__dirname, 'commands');
+        const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+        for (const file of commandFiles) {
+            const command = require(path.join(commandsPath, file));
+            if ('data' in command && 'execute' in command) {
+                commands.push(command.data.toJSON());
+            } else {
+                console.log(chalk.yellow(`[WARNING] The command at ${file} is missing a required "data" or "execute" property.`));
+            }
+        }
+
+        const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+
+        console.log(`Started refreshing ${commands.length} application (/) commands.`);
+
+        if (process.env.GUILD_ID) {
+            // Optional: Guild commands
+        }
+
+        console.log('Registering commands globally');
+        const data = await rest.put(
+            Routes.applicationCommands(process.env.CLIENT_ID),
+            { body: commands },
+        );
+
+        console.log(`Successfully reloaded ${data.length} application (/) commands.`);
+    } catch (error) {
+        console.error(error);
+    }
+};
+// --- DEPLOYMENT LOGIC END ---
+
+const client = new Client({ 
+    intents: [GatewayIntentBits.Guilds],
+    presence: { status: 'dnd' }
+});
 
 // Command Handling
 client.commands = new Collection();
@@ -23,7 +72,7 @@ for (const file of commandFiles) {
 	if ('data' in command && 'execute' in command) {
 		client.commands.set(command.data.name, command);
 	} else {
-		console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+		console.log(chalk.yellow(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`));
 	}
 }
 
@@ -38,19 +87,14 @@ if (fs.existsSync(buttonsPath)) {
         if ('customId' in button && 'execute' in button) {
             client.buttons.set(button.customId, button);
         } else {
-            console.log(`[WARNING] The button at ${filePath} is missing a required "customId" or "execute" property.`);
+            console.log(chalk.yellow(`[WARNING] The button at ${filePath} is missing a required "customId" or "execute" property.`));
         }
     }
 }
 
-const db = require('./utils/database');
-const reminderCommand = require('./commands/reminder');
-const randomRoleColor = require('./scripts/randomRoleColor');
-const statusRotator = require('./scripts/statusRotator');
-
 client.once(Events.ClientReady, async c => {
     const duration = (performance.now() - startTime).toFixed(2);
-	console.log(`Ready! Logged in as ${c.user.tag} (Startup: ${duration}ms)`);
+	console.log(chalk.green(`Ready! Logged in as ${c.user.tag} (Startup: ${duration}ms)`));
 
     // Start Background Scripts
     statusRotator.start(client);
@@ -60,27 +104,19 @@ client.once(Events.ClientReady, async c => {
     try {
         // Synchronous call - no await
         const pending = db.getAllPendingReminders();
-        console.log(`Restoring ${pending.length} pending reminders...`);
+        console.log(chalk.blue(`Restoring ${pending.length} pending reminders...`));
         
         let restoredCount = 0;
         const now = Date.now();
 
         for (const r of pending) {
-            const delay = r.dueAt - now;
-            if (delay <= 0) {
-                // Should have sent already -> Send immediately
-                reminderCommand.sendReminder(client, r.userId, r.channelId, r.message, r.id, r.deliveryType);
-            } else {
-                // Schedule future
-                setTimeout(() => {
-                    reminderCommand.sendReminder(client, r.userId, r.channelId, r.message, r.id, r.deliveryType);
-                }, delay);
-            }
+            // Restore using safe scheduler
+            reminderCommand.scheduleReminder(client, r.userId, r.channelId, r.message, r.id, r.deliveryType, r.dueAt);
             restoredCount++;
         }
-        console.log(`Restored ${restoredCount} reminders.`);
+        console.log(chalk.blue(`Restored ${restoredCount} reminders.`));
     } catch (err) {
-        console.error('Failed to restore reminders:', err);
+        console.error(chalk.red('Failed to restore reminders:'), err);
     }
 });
 
@@ -105,11 +141,14 @@ client.on(Events.InteractionCreate, async interaction => {
     try {
         console.log(`Received interaction: ${interaction.type} (ID: ${interaction.id})`);
         
+        // Dynamic Status
+        statusRotator.recordActivity(client);
+        
         // Button Handling
         if (interaction.isButton()) {
             const button = client.buttons.get(interaction.customId);
             if (!button) {
-                console.error(`No handler matching ${interaction.customId} was found.`);
+                console.error(chalk.red(`No handler matching ${interaction.customId} was found.`));
                 await interaction.reply({ content: 'This button is no longer active.', flags: MessageFlags.Ephemeral });
                 return;
             }
@@ -130,7 +169,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const command = client.commands.get(interaction.commandName);
 
         if (!command) {
-            console.error(`No command matching ${interaction.commandName} was found.`);
+            console.error(chalk.red(`No command matching ${interaction.commandName} was found.`));
             return;
         }
 
@@ -157,8 +196,11 @@ client.on(Events.InteractionCreate, async interaction => {
         }
 
     } catch (error) {
-        console.error('Uncaptured interaction error:', error);
+        console.error(chalk.red('Uncaptured interaction error:'), error);
     }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+(async () => {
+    await deployCommands();
+    await client.login(process.env.DISCORD_TOKEN);
+})();

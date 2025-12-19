@@ -1,4 +1,5 @@
 const { MessageFlags } = require('discord.js');
+const chalk = require('chalk');
 const V2Builder = require('./components');
 const db = require('./database');
 
@@ -8,9 +9,9 @@ let loggingConfig = {};
 // Load on startup
 try {
     loggingConfig = db.getAllGuildConfigs();
-    console.log(`[Logger] Loaded configs for ${Object.keys(loggingConfig).length} guilds.`);
+    console.log(chalk.green(`[Logger] Loaded configs for ${Object.keys(loggingConfig).length} guilds.`));
 } catch (err) {
-    console.error('Failed to load logging config from DB:', err);
+    console.error(chalk.red('Failed to load logging config from DB:'), err);
 }
 
 function saveGuildConfig(guildId) {
@@ -59,7 +60,7 @@ async function logAction(client, guildId, user, action, descriptions) {
             components: [v2Container] 
         });
     } catch (error) {
-        console.error('Failed to send log:', JSON.stringify(error, null, 2));
+        console.error(chalk.red('Failed to send log:'), JSON.stringify(error, null, 2));
     }
 }
 

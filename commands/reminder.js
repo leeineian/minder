@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
+const chrono = require('chrono-node');
 const V2Builder = require('../utils/components');
 const db = require('../utils/database');
 
@@ -14,12 +15,10 @@ module.exports = {
                     option.setName('message')
                         .setDescription('What should I remind you about?')
                         .setRequired(true))
-                .addIntegerOption(option => 
-                    option.setName('minutes')
-                        .setDescription('In how many minutes?')
-                        .setRequired(true)
-                        .setMinValue(1)
-                        .setMaxValue(1440)) // Max 24 hours
+                .addStringOption(option => 
+                    option.setName('when')
+                        .setDescription('When? (e.g. "tomorrow at 9am", "in 30 mins")')
+                        .setRequired(true))
                 .addStringOption(option =>
                     option.setName('sendto')
                         .setDescription('Where should I send the reminder?')
@@ -44,23 +43,35 @@ module.exports = {
 
     async handleSet(interaction) {
         const message = interaction.options.getString('message');
-        const minutes = interaction.options.getInteger('minutes');
+        const when = interaction.options.getString('when');
         const sendTo = interaction.options.getString('sendto') || 'dm';
-        const delayMs = minutes * 60 * 1000;
-        const dueAt = Date.now() + delayMs;
+
+        const parsedDate = chrono.parseDate(when);
+        if (!parsedDate) {
+            return interaction.reply({ 
+                content: 'I could not understand that time. Please try again (e.g. "in 10 minutes", "tomorrow at 5pm").', 
+                flags: MessageFlags.Ephemeral 
+            });
+        }
+        if (parsedDate <= new Date()) {
+            return interaction.reply({ 
+                content: 'That time is in the past! Please choose a future time.', 
+                flags: MessageFlags.Ephemeral 
+            });
+        }
+        const dueAt = parsedDate.getTime();
+
+        const delayMs = dueAt - Date.now();
 
         // Defer immediately to allow time for DB and DM operations
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         try {
-            // Persist to DB (including channelId and deliveryType)
-            // Synchronous call - no await
+            // Persist to DB
             const id = db.addReminder(interaction.user.id, interaction.channelId, message, dueAt, sendTo);
 
             // Schedule Delivery
-            setTimeout(async () => {
-                await this.sendReminder(interaction.client, interaction.user.id, interaction.channelId, message, id, sendTo);
-            }, delayMs);
+            this.scheduleReminder(interaction.client, interaction.user.id, interaction.channelId, message, id, sendTo, dueAt);
 
             let dmUrl = null;
             let dmFailed = false;
@@ -129,7 +140,7 @@ module.exports = {
             const v2Container = V2Builder.container([
                 V2Builder.textDisplay(`**Your Reminders**\n${listText}`),
                 V2Builder.actionRow([
-                    V2Builder.button('Dismiss', 'dismiss_message', 4) 
+                    V2Builder.button('Clear All Reminders', 'clear_reminders', 4) // Style 4 (Danger/Red)
                 ])
             ]);
             
@@ -148,15 +159,30 @@ module.exports = {
         }
     },
 
+    scheduleReminder(client, userId, channelId, message, dbId, deliveryType, dueAt) {
+        const now = Date.now();
+        const delay = dueAt - now;
+        const MAX_DELAY = 2147483647; // 2^31 - 1 (~24.8 days)
+
+        if (delay <= 0) {
+            // Send immediately
+            this.sendReminder(client, userId, channelId, message, dbId, deliveryType);
+        } else if (delay > MAX_DELAY) {
+            // Too long for a single setTimeout, wait MAX_DELAY then check again
+            setTimeout(() => {
+                this.scheduleReminder(client, userId, channelId, message, dbId, deliveryType, dueAt);
+            }, MAX_DELAY);
+        } else {
+            // Safe to schedule directly
+            setTimeout(() => {
+                this.sendReminder(client, userId, channelId, message, dbId, deliveryType);
+            }, delay);
+        }
+    },
+
     // Helper to send and cleanup
     async sendReminder(client, userId, channelId, message, dbId, deliveryType = 'dm') {
         try {
-            // Verify it still exists (in case cancelled)
-            // Ideally we'd have a getReminder(id) check here, but proceed to try sending first
-            // Actually, we should check if it was deleted. But for now blindly sending is okay if we handle the delete right.
-            // Better practice: Check if exists to avoid double sends if race conditions occur? 
-            // Stick to plan: Send THEN delete.
-
             const reminderText = `⏰ **Time's Up, <@${userId}>!**\nReminder: "${message}"`;
             
             const v2Container = V2Builder.container([
@@ -213,13 +239,7 @@ module.exports = {
                     }
                 }
             }
-            
-            // Only delete if we successfully handed it off to Discord (or if user is gone/blocked permanently)
-            // For simplicity in this optimization: if we tried to send and it didn't throw a fatal system error, we delete it so it doesn't loop forever.
-            // If deliverySuccess is false, it might be a temporary network error. Ideally we retry.
-            // But to avoid spam if it's a permanent error, we'll delete it. 
-            // Actually, keeping strict "At Least Once" semantics:
-            
+
             // Synchronous delete
             db.deleteReminder(dbId);
 

@@ -3,6 +3,7 @@ const db = require('../utils/database');
 const { getNextUpdateTimestamp, getCurrentColor } = require('./randomRoleColor');
 
 const ROTATION_INTERVAL_MS = 60000; // 60 Seconds (Safe for rate limits)
+const IDLE_THRESHOLD = 1 * 60 * 1000; // 1 Minute
 const START_TIME = Date.now();
 
 const statusGenerators = [
@@ -52,10 +53,12 @@ const statusGenerators = [
 
     // 4. Latency
     async (client) => {
+        const ping = Math.round(client.ws.ping);
+        if (ping < 0) return null; // Invalid/Not ready yet
         return {
             name: 'Custom Status',
             type: ActivityType.Custom,
-            state: `Ping: ${Math.round(client.ws.ping)}ms`
+            state: `Ping: ${ping}ms`
         };
     },
 
@@ -73,21 +76,37 @@ const statusGenerators = [
 
 async function updateStatus(client) {
     // Pick a random status
-    const index = Math.floor(Math.random() * statusGenerators.length);
-    const statusGenerator = statusGenerators[index];
+    let index = Math.floor(Math.random() * statusGenerators.length);
+    let generator = statusGenerators[index];
     
-    const presenceData = await statusGenerator(client);
+    let presenceData = await generator(client);
+
+    // Fallback if the chosen one failed (returned null)
+    if (!presenceData) {
+        // Try Uptime (Index 2) as a safe fallback
+        presenceData = await statusGenerators[2](client);
+    }
+
     if (presenceData) {
+        // Dynamic Status Logic
+        const timeSinceLastActivity = Date.now() - lastActivityTime;
+        const status = timeSinceLastActivity < IDLE_THRESHOLD ? 'online' : 'dnd';
+
         client.user.setPresence({
             activities: [presenceData],
-            status: 'dnd',
+            status: status,
         });
+    } else {
+        // Absolute fallback if everything fails, just force DND
+        client.user.setPresence({ status: 'dnd' });
     }
 }
 
+let lastActivityTime = Date.now();
+
 module.exports = {
     start: (client) => {
-        console.log('[StatusRotator] Started.');
+        console.log('[StatusRotator] Script started.');
         
         // Initial Update
         updateStatus(client);
@@ -96,5 +115,16 @@ module.exports = {
         setInterval(() => {
             updateStatus(client);
         }, ROTATION_INTERVAL_MS);
+    },
+    recordActivity: (client) => {
+        const timeSinceLastActivity = Date.now() - lastActivityTime;
+        const wasIdle = timeSinceLastActivity >= IDLE_THRESHOLD;
+
+        lastActivityTime = Date.now();
+
+        if (wasIdle) {
+            console.log('[StatusRotator] Waking up from IDLE, forcing status update.');
+            updateStatus(client);
+        }
     }
 };

@@ -1,15 +1,16 @@
 {
   "name": "minder",
   "version": "1.0.0",
-  "description": "A simple customizable discord app with /say command",
+  "description": "A discord app for The Mindscape server",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon",
-    "deploy": "node scripts/deploy-commands.js"
+    "dev": "nodemon index.js"
   },
   "dependencies": {
     "better-sqlite3": "^12.5.0",
+    "chalk": "^4.1.2",
+    "chrono-node": "^2.9.0",
     "discord.js": "^14.16.3",
     "dotenv": "^16.4.5"
   },

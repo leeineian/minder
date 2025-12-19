@@ -1,4 +1,4 @@
-require('dotenv').config();
+// load .env
 const { performance } = require('perf_hooks');
 const fs = require('fs');
 const path = require('path');

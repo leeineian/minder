@@ -1,3 +1,4 @@
+// load .env
 const remindersRepo = require('./db/repo/reminders');
 const guildConfigRepo = require('./db/repo/guildConfig');
 

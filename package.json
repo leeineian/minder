@@ -4,15 +4,13 @@
   "description": "A discord app for The Mindscape server",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "bun index.js",
+    "dev": "bun --watch index.js"
   },
   "dependencies": {
-    "better-sqlite3": "^12.5.0",
     "chalk": "^4.1.2",
     "chrono-node": "^2.9.0",
-    "discord.js": "^14.16.3",
-    "dotenv": "^16.4.5"
+    "discord.js": "^14.16.3"
   },
   "keywords": [
     "discord",
@@ -22,7 +20,5 @@
   ],
   "author": "",
   "license": "ISC",
-  "devDependencies": {
-    "nodemon": "^3.1.11"
-  }
+  "devDependencies": {}
 }

@@ -2,15 +2,18 @@
   "name": "minder",
   "version": "1.0.0",
   "description": "A discord app for The Mindscape server",
-  "main": "index.js",
+  "main": "start.js",
   "scripts": {
-    "start": "bun src/index.js",
-    "dev": "bun --watch src/index.js"
+    "deploy": "bun src/deploy.js",
+    "stop": "bun src/stop.js",
+    "start": "bun run stop && bun src/start.js",
+    "dev": "bun run stop && bun --watch src/start.js"
   },
   "dependencies": {
     "chalk": "^4.1.2",
     "chrono-node": "^2.9.0",
-    "discord.js": "^14.16.3"
+    "discord.js": "^14.16.3",
+    "hercai": "^14.0.3"
   },
   "keywords": [
     "discord",
@@ -19,6 +22,5 @@
     "command"
   ],
   "author": "",
-  "license": "ISC",
-  "devDependencies": {}
+  "license": "ISC"
 }

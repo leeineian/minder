@@ -1,38 +1,35 @@
 const { ActivityType } = require('discord.js');
+const chalk = require('chalk');
 const db = require('../utils/database');
 const { getNextUpdateTimestamp, getCurrentColor } = require('./randomRoleColor');
 
-const ROTATION_INTERVAL_MS = 60000; // 60 Seconds (Safe for rate limits)
-const IDLE_THRESHOLD = 1 * 60 * 1000; // 1 Minute
+const ROTATION_INTERVAL_MS = 60000;
+const IDLE_THRESHOLD = 1 * 60 * 1000;
 const START_TIME = Date.now();
 
-const statusGenerators = [
-    // 1. Pending Reminders
-    async () => {
+// Named Generators for Organization
+const generators = {
+    reminders: async () => {
         try {
             const count = await db.getRemindersCount();
-            
             if (count === 0) return null;
-
             return { 
                 name: 'Custom Status', 
                 type: ActivityType.Custom, 
                 state: `${count} pending reminder${count === 1 ? '' : 's'}` 
             };
         } catch (e) {
-            console.error('Failed to fetching reminder count for status:', e);
+            console.error('Failed to fetching reminder count:', e);
             return null;
         }
     },
-    
-    // 2. Color Update
-    async () => {
+
+    color: async () => {
         const nextUpdate = getNextUpdateTimestamp();
         const currentColor = getCurrentColor();
         if (!nextUpdate) return null;
         
         const diffMinutes = Math.ceil((nextUpdate - Date.now()) / 60000);
-        
         const timeStr = diffMinutes === 1 ? '1 minute' : `${diffMinutes} minutes`;
         return {
             name: 'Custom Status',
@@ -41,12 +38,10 @@ const statusGenerators = [
         };
     },
 
-    // 3. Uptime
-    async () => {
+    uptime: async () => {
         const uptimeMs = Date.now() - START_TIME;
         const hours = Math.floor(uptimeMs / 3600000);
         const minutes = Math.floor((uptimeMs % 3600000) / 60000);
-        
         return {
             name: 'Custom Status', 
             type: ActivityType.Custom, 
@@ -54,10 +49,9 @@ const statusGenerators = [
         };
     },
 
-    // 4. Latency
-    async (client) => {
+    latency: async (client) => {
         const ping = Math.round(client.ws.ping);
-        if (ping < 0) return null; // Invalid/Not ready yet
+        if (ping < 0) return null;
         return {
             name: 'Custom Status',
             type: ActivityType.Custom,
@@ -65,29 +59,27 @@ const statusGenerators = [
         };
     },
 
-    // 5. UTC Time
-    async () => {
+    time: async () => {
         const now = new Date();
-        const timeStr = now.toISOString().split('T')[1].substring(0, 5); // HH:MM
+        const timeStr = now.toISOString().split('T')[1].substring(0, 5);
         return {
             name: 'Custom Status',
             type: ActivityType.Custom,
             state: `Time: ${timeStr} UTC`
         };
     }
-];
+};
+
+const statusList = Object.values(generators);
 
 async function updateStatus(client) {
-    // Pick a random status
-    let index = Math.floor(Math.random() * statusGenerators.length);
-    let generator = statusGenerators[index];
-    
+    // Pick random
+    const generator = statusList[Math.floor(Math.random() * statusList.length)];
     let presenceData = await generator(client);
 
-    // Fallback if the chosen one failed (returned null)
+    // Fallback: Uptime
     if (!presenceData) {
-        // Try Uptime (Index 2) as a safe fallback
-        presenceData = await statusGenerators[2](client);
+        presenceData = await generators.uptime(client);
     }
 
     if (presenceData) {
@@ -100,7 +92,6 @@ async function updateStatus(client) {
             status: status,
         });
     } else {
-        // Absolute fallback if everything fails, just force DND
         client.user.setPresence({ status: 'dnd' });
     }
 }
@@ -109,15 +100,9 @@ let lastActivityTime = Date.now();
 
 module.exports = {
     start: (client) => {
-        console.log('[StatusRotator] Script started.');
-        
-        // Initial Update
+        console.log(chalk.magenta('[StatusRotator] Script started.'));
         updateStatus(client);
-
-        // Interval
-        setInterval(() => {
-            updateStatus(client);
-        }, ROTATION_INTERVAL_MS);
+        setInterval(() => updateStatus(client), ROTATION_INTERVAL_MS);
     },
     recordActivity: (client) => {
         const timeSinceLastActivity = Date.now() - lastActivityTime;
@@ -126,8 +111,9 @@ module.exports = {
         lastActivityTime = Date.now();
 
         if (wasIdle) {
-            console.log('[StatusRotator] Waking up from IDLE, forcing status update.');
+            console.log(chalk.magenta('[StatusRotator] Waking up from IDLE, forcing status update.'));
             updateStatus(client);
         }
-    }
+    },
+    updateStatus: updateStatus
 };

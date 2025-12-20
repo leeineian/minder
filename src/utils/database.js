@@ -14,5 +14,11 @@ module.exports = {
     // Configs
     setGuildConfig: guildConfigRepo.setGuildConfig,
     getGuildConfig: guildConfigRepo.getGuildConfig,
-    getAllGuildConfigs: guildConfigRepo.getAllGuildConfigs
+    getAllGuildConfigs: guildConfigRepo.getAllGuildConfigs,
+
+    // Ping Categories
+    addPingCategory: require('./db/repo/pingCategories').addRawCategory,
+    getAllPingCategories: require('./db/repo/pingCategories').getAllRawCategories,
+    clearAllPingCategories: require('./db/repo/pingCategories').clearAllRawCategories,
+    deletePingCategory: require('./db/repo/pingCategories').deleteRawCategory
 };

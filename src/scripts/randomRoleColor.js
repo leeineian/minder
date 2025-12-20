@@ -1,4 +1,5 @@
 const GUILD_ID = '832245857595555861';
+const chalk = require('chalk');
 const ROLE_ID = '1450798622294675627';
 const MIN_MINUTES = 1;
 const MAX_MINUTES = 10;
@@ -51,7 +52,7 @@ function scheduleNextUpdate(client) {
 
 module.exports = {
     start: async (client) => {
-        console.log('[RandomColor] Script started.');
+        console.log(chalk.magenta('[RandomColor] Script started.'));
         // Run immediately on start
         await updateRoleColor(client);
         // Then start the loop

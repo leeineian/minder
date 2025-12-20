@@ -34,6 +34,31 @@ db.run(`
     )
 `);
 
-console.log('[Database] Initialized with bun:sqlite (data.db).');
+// 3. User AI Prompts
+db.run(`
+    CREATE TABLE IF NOT EXISTS user_ai_prompts (
+        userId TEXT PRIMARY KEY,
+        prompt TEXT NOT NULL
+    )
+`);
+
+// 4. AI Memory Barriers
+db.run(`
+    CREATE TABLE IF NOT EXISTS ai_memory_barriers (
+        channelId TEXT PRIMARY KEY,
+        timestamp INTEGER NOT NULL
+    )
+`);
+
+// 5. Ping Categories
+db.run(`
+    CREATE TABLE IF NOT EXISTS ping_categories (
+        categoryId TEXT PRIMARY KEY,
+        categoryName TEXT NOT NULL
+    )
+`);
+
+const chalk = require('chalk');
+console.log(chalk.blue('[Database] Initialized with bun:sqlite (data.db).'));
 
 module.exports = db;

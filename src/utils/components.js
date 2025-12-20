@@ -64,6 +64,17 @@ class V2Builder {
             items: items
         };
     }
+
+    static selectMenu(customId, options = [], placeholder = 'Select an option', minValues = 1, maxValues = 1) {
+        return {
+            type: 3, // String Select Menu
+            custom_id: customId,
+            options: options, // [{ label, value, description, emoji, default }]
+            placeholder: placeholder,
+            min_values: minValues,
+            max_values: maxValues
+        };
+    }
 }
 
 module.exports = V2Builder;

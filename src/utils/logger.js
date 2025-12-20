@@ -9,7 +9,7 @@ let loggingConfig = {};
 // Load on startup
 try {
     loggingConfig = db.getAllGuildConfigs();
-    console.log(chalk.green(`[Logger] Loaded configs for ${Object.keys(loggingConfig).length} guilds.`));
+    console.log(chalk.blue(`[Logger] Loaded configs for ${Object.keys(loggingConfig).length} guilds.`));
 } catch (err) {
     console.error(chalk.red('Failed to load logging config from DB:'), err);
 }

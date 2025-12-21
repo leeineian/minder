@@ -22,6 +22,10 @@ module.exports = {
     getRemindersCount: remindersRepo.getRemindersCount,
     /** @type {import('./db/repo/reminders').deleteAllReminders} */
     deleteAllReminders: remindersRepo.deleteAllReminders,
+    /** @type {import('./db/repo/reminders').markReminderAsSent} */
+    markReminderAsSent: remindersRepo.markReminderAsSent,
+    /** @type {import('./db/repo/reminders').resetReminderSentStatus} */
+    resetReminderSentStatus: remindersRepo.resetReminderSentStatus,
 
     // --- Guild Configs ---
     /** @type {import('./db/repo/guildConfig').setGuildConfig} */

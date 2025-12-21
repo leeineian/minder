@@ -96,6 +96,47 @@ async function setPingCategory(interaction) {
         return interaction.reply({ content: `⚠️ Category **${category.name}** is currently running! Reset first to make changes.`, flags: MessageFlags.Ephemeral });
     }
 
+    // --- PERMISSION VALIDATION ---
+    const botMember = interaction.guild.members.me;
+    
+    // Check bot has Manage Webhooks permission in category
+    if (!category.permissionsFor(botMember).has(PermissionFlagsBits.ManageWebhooks)) {
+        return interaction.reply({ 
+            content: `❌ **Permission Error**\n\nI need the \`Manage Webhooks\` permission in the category **${category.name}** to create and manage webhooks.\n\nPlease grant this permission and try again.`, 
+            flags: MessageFlags.Ephemeral 
+        });
+    }
+
+    // Check permissions in child text channels
+    const textChannels = category.children.cache.filter(c => c.type === ChannelType.GuildText);
+    
+    if (textChannels.size === 0) {
+        return interaction.reply({ 
+            content: `❌ **No Text Channels**\n\nThe category **${category.name}** has no text channels to set up webhooks in.`, 
+            flags: MessageFlags.Ephemeral 
+        });
+    }
+
+    const missingPerms = [];
+    for (const [id, channel] of textChannels) {
+        const perms = channel.permissionsFor(botMember);
+        if (!perms.has(PermissionFlagsBits.ViewChannel) || 
+            !perms.has(PermissionFlagsBits.SendMessages)) {
+            missingPerms.push(channel.name);
+        }
+    }
+
+    if (missingPerms.length > 0) {
+        const list = missingPerms.slice(0, 10).map(n => `• ${n}`).join('\n');
+        const more = missingPerms.length > 10 ? `\n... and ${missingPerms.length - 10} more` : '';
+        
+        return interaction.reply({
+            content: `❌ **Permission Error**\n\nI cannot access the following channels in **${category.name}**:\n${list}${more}\n\nPlease grant me \`View Channel\` and \`Send Messages\` permissions.`,
+            flags: MessageFlags.Ephemeral
+        });
+    }
+    // --- END PERMISSION VALIDATION ---
+
     await interaction.deferReply();
     const message = await interaction.fetchReply(); // FETCH PERSISTENT MESSAGE (Fixes 15m timeout)
 

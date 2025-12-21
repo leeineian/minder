@@ -24,7 +24,8 @@ module.exports = {
 			await interaction.reply({ content: 'Message sent!', flags: MessageFlags.Ephemeral });
             return `Channel: ${interaction.channel}\nMessage: ${userInput}`;
 		} catch (error) {
-			console.error(error);
+			const ConsoleLogger = require('../../utils/consoleLogger');
+		ConsoleLogger.error('MessageCommand', 'Failed to send message:', error);
 			await interaction.reply({ content: 'Failed to send message: permission missing?', flags: MessageFlags.Ephemeral });
             return null; // Return null if action failed (or handle how you want logging)
 		}

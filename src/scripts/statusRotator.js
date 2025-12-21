@@ -99,13 +99,29 @@ async function updateStatus(client) {
 }
 
 let lastActivityTime = Date.now();
+let rotationInterval = null;
 
 module.exports = {
     start: (client) => {
         ConsoleLogger.info('StatusRotator', 'Script started.');
+        
+        // Clear any existing interval
+        if (rotationInterval) {
+            clearInterval(rotationInterval);
+        }
+        
         updateStatus(client);
-        setInterval(() => updateStatus(client), ROTATION_INTERVAL_MS);
+        rotationInterval = setInterval(() => updateStatus(client), ROTATION_INTERVAL_MS);
     },
+    
+    stop: () => {
+        if (rotationInterval) {
+            clearInterval(rotationInterval);
+            rotationInterval = null;
+            ConsoleLogger.info('StatusRotator', 'Script stopped.');
+        }
+    },
+    
     recordActivity: (client) => {
         const timeSinceLastActivity = Date.now() - lastActivityTime;
         const wasIdle = timeSinceLastActivity >= IDLE_THRESHOLD;
@@ -119,3 +135,4 @@ module.exports = {
     },
     updateStatus: updateStatus
 };
+

@@ -109,7 +109,8 @@ module.exports = {
                 }
                 await interaction.message.delete();
             } catch (err) {
-                console.error('Failed to delete log:', err);
+                const ConsoleLogger = require('../../utils/consoleLogger');
+                ConsoleLogger.error('DebugCommand', 'Failed to delete log:', err);
                 await interaction.reply({ content: 'Failed to delete log.', flags: MessageFlags.Ephemeral });
             }
         },

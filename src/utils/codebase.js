@@ -31,7 +31,19 @@ function getSafePath(relativePath) {
 /**
  * Returns a simple string map of the codebase structure (src/ only)
  */
+let cachedStructure = null;
+let lastScan = 0;
+const CACHE_TTL = 300000; // 5 minutes
+
 function getStructure() {
+    const now = Date.now();
+    
+    // Return cached structure if still valid
+    if (cachedStructure && (now - lastScan) < CACHE_TTL) {
+        return cachedStructure;
+    }
+    
+    // Re-scan
     const srcDir = path.join(ROOT_DIR, 'src');
     const structure = [];
 
@@ -53,10 +65,20 @@ function getStructure() {
 
     try {
         crawl(srcDir);
+        cachedStructure = structure;
+        lastScan = now;
         return structure;
     } catch (e) {
-        return [];
+        return cachedStructure || []; // Return cached on error if available
     }
+}
+
+/**
+ * Force refresh of cached structure (useful if you know files changed)
+ */
+function refreshStructure() {
+    cachedStructure = null;
+    return getStructure();
 }
 
 /**
@@ -85,4 +107,5 @@ function readFile(relativePath) {
     }
 }
 
-module.exports = { getStructure, readFile };
+module.exports = { getStructure, refreshStructure, readFile };
+

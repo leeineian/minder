@@ -4,6 +4,17 @@ const fs = require('fs');
 const path = require('path');
 const ConsoleLogger = require('./utils/consoleLogger');
 
+// --- ENVIRONMENT VALIDATION ---
+const REQUIRED_ENV_VARS = ['DISCORD_TOKEN', 'CLIENT_ID'];
+
+const missing = REQUIRED_ENV_VARS.filter(key => !process.env[key]);
+if (missing.length > 0) {
+    ConsoleLogger.error('Sync', `Missing required environment variables: ${missing.join(', ')}`);
+    ConsoleLogger.error('Sync', 'Please check your .env file and ensure all required variables are set.');
+    process.exit(1);
+}
+
+
 const deployCommands = async () => {
     try {
         const commands = [];

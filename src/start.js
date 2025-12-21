@@ -7,6 +7,26 @@ const path = require('path');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const ConsoleLogger = require('./utils/consoleLogger');
 
+// --- ENVIRONMENT VALIDATION ---
+const REQUIRED_ENV_VARS = ['DISCORD_TOKEN', 'CLIENT_ID'];
+const OPTIONAL_ENV_VARS = ['GUILD_ID', 'ROLE_ID', 'LLM7_KEY', 'TAVILY_API_KEY'];
+
+// Validate required variables
+const missing = REQUIRED_ENV_VARS.filter(key => !process.env[key]);
+if (missing.length > 0) {
+    console.error(`\u001b[31m[FATAL] Missing required environment variables: ${missing.join(', ')}\u001b[0m`);
+    console.error(`\u001b[31m[FATAL] Please check your .env file and ensure all required variables are set.\u001b[0m`);
+    process.exit(1);
+}
+
+// Warn about optional variables
+const missingOptional = OPTIONAL_ENV_VARS.filter(key => !process.env[key]);
+if (missingOptional.length > 0) {
+    console.warn(`\u001b[33m[WARNING] Missing optional environment variables: ${missingOptional.join(', ')}\u001b[0m`);
+    console.warn(`\u001b[33m[WARNING] Some features may be disabled.\u001b[0m`);
+}
+
+
 // Utilities
 
 const startTime = performance.now();
@@ -24,12 +44,26 @@ try {
 
 const cleanup = () => {
     try {
+        ConsoleLogger.info('Shutdown', 'Gracefully stopping background scripts...');
+        
+        // Stop background scripts
+        try {
+            const statusRotator = require('./scripts/statusRotator');
+            const randomRoleColor = require('./scripts/randomRoleColor');
+            
+            statusRotator.stop();
+            randomRoleColor.stop();
+        } catch (err) {
+            ConsoleLogger.error('Shutdown', 'Error stopping background scripts:', err);
+        }
+        
+        // Remove PID file
         if (fs.existsSync(PID_FILE)) {
             fs.unlinkSync(PID_FILE);
             ConsoleLogger.info('Shutdown', 'PID file removed.');
         }
     } catch (err) {
-        ConsoleLogger.error('Shutdown', 'Failed to remove PID file:', err);
+        ConsoleLogger.error('Shutdown', 'Failed during cleanup:', err);
     }
     process.exit(0);
 };

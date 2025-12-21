@@ -37,6 +37,7 @@ async function updateRoleColor(client) {
 
 let nextUpdateTimestamp = 0;
 let currentColor = '#000000';
+let nextTimeout = null;
 
 function scheduleNextUpdate(client) {
     // Random minute between MIN and MAX (inclusive)
@@ -46,7 +47,10 @@ function scheduleNextUpdate(client) {
     nextUpdateTimestamp = Date.now() + ms;
     ConsoleLogger.info('RandomColor', `Next update in ${minutes} minutes.`);
     
-    setTimeout(async () => {
+    // Clear any existing timeout
+    if (nextTimeout) clearTimeout(nextTimeout);
+    
+    nextTimeout = setTimeout(async () => {
         await updateRoleColor(client);
         scheduleNextUpdate(client); // Recurse
     }, ms);
@@ -66,6 +70,15 @@ module.exports = {
         // Then start the loop
         scheduleNextUpdate(client);
     },
+    
+    stop: () => {
+        if (nextTimeout) {
+            clearTimeout(nextTimeout);
+            nextTimeout = null;
+            ConsoleLogger.info('RandomColor', 'Script stopped.');
+        }
+    },
+    
     updateRoleColor,
     getNextUpdateTimestamp: () => nextUpdateTimestamp,
     getCurrentColor: () => currentColor

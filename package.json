@@ -1,13 +1,15 @@
 {
   "name": "minder",
   "version": "1.0.0",
-  "description": "A discord app for The Mindscape server",
+  "description": "A feature-rich Discord bot for The Mindscape server with AI chat, reminders, and stress testing tools",
   "main": "src/start.js",
   "scripts": {
     "sync": "bun src/sync.js",
     "stop": "bun src/stop.js",
     "start": "bun run stop && bun src/start.js",
-    "dev": "bun run stop && bun --watch src/start.js"
+    "dev": "bun run stop && bun --watch src/start.js",
+    "test": "bun test",
+    "test:watch": "bun test --watch"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -19,8 +21,21 @@
   },
   "keywords": [
     "discord",
-    "bot"
+    "bot",
+    "AI",
+    "reminders",
+    "bun",
+    "sqlite",
+    "webhooks",
+    "stress-testing"
   ],
   "author": "EianLee",
-  "license": "ISC"
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/leeineian/minder"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
 }

@@ -1,25 +1,49 @@
 const db = require('../client');
+const ConsoleLogger = require('../../consoleLogger');
+
+// Cache prepared statements
+const stmt = {
+    setConfig: db.prepare(`
+        INSERT INTO guild_configs (guildId, config) VALUES (?, ?)
+        ON CONFLICT(guildId) DO UPDATE SET config = excluded.config
+    `),
+    getConfig: db.prepare('SELECT config FROM guild_configs WHERE guildId = ?'),
+    getAllConfigs: db.prepare('SELECT guildId, config FROM guild_configs')
+};
 
 module.exports = {
     setGuildConfig: (guildId, configObj) => {
-        const json = JSON.stringify(configObj);
-        db.prepare(`
-            INSERT INTO guild_configs (guildId, config) VALUES (?, ?)
-            ON CONFLICT(guildId) DO UPDATE SET config = excluded.config
-        `).run(guildId, json);
+        try {
+            const json = JSON.stringify(configObj);
+            stmt.setConfig.run(guildId, json);
+        } catch (error) {
+            ConsoleLogger.error('Database', 'Failed to set guild config:', error);
+            throw new Error('Database operation failed: setGuildConfig');
+        }
     },
 
     getGuildConfig: (guildId) => {
-        const row = db.prepare('SELECT config FROM guild_configs WHERE guildId = ?').get(guildId);
-        return row ? JSON.parse(row.config) : null;
+        try {
+            const row = stmt.getConfig.get(guildId);
+            return row ? JSON.parse(row.config) : null;
+        } catch (error) {
+            ConsoleLogger.error('Database', 'Failed to get guild config:', error);
+            return null;
+        }
     },
 
     getAllGuildConfigs: () => {
-        const rows = db.prepare('SELECT guildId, config FROM guild_configs').all();
-        const configs = {};
-        for (const row of rows) {
-            configs[row.guildId] = JSON.parse(row.config);
+        try {
+            const rows = stmt.getAllConfigs.all();
+            const configs = {};
+            for (const row of rows) {
+                configs[row.guildId] = JSON.parse(row.config);
+            }
+            return configs;
+        } catch (error) {
+            ConsoleLogger.error('Database', 'Failed to get all guild configs:', error);
+            return {};
         }
-        return configs;
     }
 };
+

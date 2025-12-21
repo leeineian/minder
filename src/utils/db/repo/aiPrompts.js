@@ -1,29 +1,51 @@
 const db = require('../client');
+const ConsoleLogger = require('../../consoleLogger');
+
+// Cache prepared statements
+const stmt = {
+    get: db.prepare('SELECT prompt FROM user_ai_prompts WHERE userId = ?'),
+    set: db.prepare('INSERT OR REPLACE INTO user_ai_prompts (userId, prompt) VALUES (?, ?)'),
+    delete: db.prepare('DELETE FROM user_ai_prompts WHERE userId = ?')
+};
 
 module.exports = {
     /**
      * Get a user's custom prompt. Returns undefined if not found.
      */
     get: (userId) => {
-        const row = db.prepare('SELECT prompt FROM user_ai_prompts WHERE userId = ?').get(userId);
-        return row ? row.prompt : undefined;
+        try {
+            const row = stmt.get.get(userId);
+            return row ? row.prompt : undefined;
+        } catch (error) {
+            ConsoleLogger.error('Database', 'Failed to get AI prompt:', error);
+            return undefined;
+        }
     },
 
     /**
      * Set (upsert) a user's custom prompt.
      */
     set: (userId, prompt) => {
-        const stmt = db.prepare('INSERT OR REPLACE INTO user_ai_prompts (userId, prompt) VALUES (?, ?)');
-        const info = stmt.run(userId, prompt);
-        return info.changes;
+        try {
+            const info = stmt.set.run(userId, prompt);
+            return info.changes;
+        } catch (error) {
+            ConsoleLogger.error('Database', 'Failed to set AI prompt:', error);
+            return 0;
+        }
     },
 
     /**
      * Delete a user's custom prompt (reset to default).
      */
     delete: (userId) => {
-        const stmt = db.prepare('DELETE FROM user_ai_prompts WHERE userId = ?');
-        const info = stmt.run(userId);
-        return info.changes;
+        try {
+            const info = stmt.delete.run(userId);
+            return info.changes;
+        } catch (error) {
+            ConsoleLogger.error('Database', 'Failed to delete AI prompt:', error);
+            return 0;
+        }
     }
 };
+

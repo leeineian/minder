@@ -35,7 +35,7 @@ module.exports = {
             }
             ConsoleLogger.success('Reminders', `Restored ${restoredCount} reminders.`);
         } catch (err) {
-            ConsoleLogger.error('Reminders', 'Failed to restore reminders:', err);
+            ConsoleLogger.error('Reminders', `Failed to restore reminders. Database returned ${pending?.length || 0} pending reminders.`, err);
         }
     },
 };

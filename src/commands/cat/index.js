@@ -79,7 +79,8 @@ module.exports = {
 
             return 'Requested a cat image';
         } catch (error) {
-            console.error('Cat Command Error:', error);
+            const ConsoleLogger = require('../../utils/consoleLogger');
+            ConsoleLogger.error('CatCommand', 'Failed to fetch cat:', error);
             await interaction.editReply({ 
                 content: `Failed to fetch a cat ${type}! 😿`, 
                 flags: MessageFlags.Ephemeral 

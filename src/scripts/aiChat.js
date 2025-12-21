@@ -1,12 +1,20 @@
 const db = require('../utils/database');
 const ConsoleLogger = require('../utils/consoleLogger');
-const { DEFAULT_SYSTEM_PROMPT, MODEL, PROCESSED_CACHE_TTL } = require('../configs/ai');
+const { 
+    DEFAULT_SYSTEM_PROMPT, 
+    MODEL, 
+    PROCESSED_CACHE_TTL,
+    ATTACHMENT_LIMIT_BYTES,
+    MAX_ATTACHMENT_TEXT_SIZE,
+    MAX_HISTORY_FETCH,
+    LLM7_ENDPOINT
+} = require('../configs/ai');
+const { TIMEZONE } = require('../configs/constants');
 const statusRotator = require('./statusRotator');
 const codebase = require('../utils/codebase');
 const { tavily } = require("@tavily/core");
 
 // --- CONFIGURATION ---
-const LLM7_ENDPOINT = "https://api.llm7.io/v1/chat/completions";
 const tvly = tavily({ apiKey: process.env.TAVILY_API_KEY || "" });
 
 // --- SEARCH CONFIG ---
@@ -72,7 +80,7 @@ async function handleMessage(message, client) {
         // 3. Prepare Context
         ConsoleLogger.info('AI Chat', 'Building history...');
         const barrierTimestamp = db.aiMemory.getBarrier(message.channel.id);
-        const contextMessages = await message.channel.messages.fetch({ limit: 50, before: message.id }).catch(() => new Map());
+        const contextMessages = await message.channel.messages.fetch({ limit: MAX_HISTORY_FETCH, before: message.id }).catch(() => new Map());
 
         const history = [];
         const rawContext = Array.from(contextMessages.values())
@@ -107,12 +115,12 @@ async function handleMessage(message, client) {
                 const isText = attachment.contentType?.startsWith('text/') || 
                                ['.js', '.py', '.txt', '.md', '.json', '.html', '.css', '.c', '.cpp', '.java', '.go', '.rs', '.log', '.sh'].some(ext => attachment.name.endsWith(ext));
                 
-                if (isText && attachment.size < 50000) {
+                if (isText && attachment.size < ATTACHMENT_LIMIT_BYTES) {
                     try {
                         const response = await fetch(attachment.url);
                         if (response.ok) {
                             const text = await response.text();
-                            const truncatedText = text.length > 20000 ? text.substring(0, 20000) + "\n...[Truncated]" : text;
+                            const truncatedText = text.length > MAX_ATTACHMENT_TEXT_SIZE ? text.substring(0, MAX_ATTACHMENT_TEXT_SIZE) + "\n...[Truncated]" : text;
                             attachmentPrompts.push(`\n[File Attachment: ${attachment.name}]\n\`\`\`\n${truncatedText}\n\`\`\``);
                         }
                     } catch (e) {
@@ -166,7 +174,7 @@ async function handleMessage(message, client) {
         // --- TIME CONTEXT ---
         const now = new Date();
         const timeString = now.toLocaleString('en-US', { 
-            timeZone: 'Asia/Manila', 
+            timeZone: TIMEZONE, 
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', 
             hour: '2-digit', minute: '2-digit', hour12: true 
         });

@@ -64,7 +64,8 @@ module.exports = {
                     components: [] 
                 });
             } catch (err) {
-                 console.error('Clear Reminders Error:', err);
+                 const ConsoleLogger = require('../../utils/consoleLogger');
+                 ConsoleLogger.error('ReminderCommand', 'Clear reminders failed:', err);
                  await interaction.reply({ content: 'Failed to clear reminders.', flags: MessageFlags.Ephemeral });
             }
         }

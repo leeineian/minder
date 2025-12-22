@@ -249,4 +249,34 @@ describe('Debug Command', () => {
             expect(subcommands).toContain('purge');
         });
     });
+
+    describe('Debug Helpers', () => {
+        const debugHelper = require('../../src/commands/debug/.helper');
+
+        test('formatInterval should format seconds', () => {
+            expect(debugHelper.formatInterval(5000)).toBe('5s');
+            expect(debugHelper.formatInterval(30000)).toBe('30s');
+        });
+
+        test('formatInterval should format minutes', () => {
+            expect(debugHelper.formatInterval(60000)).toBe('1min');
+            expect(debugHelper.formatInterval(300000)).toBe('5min');
+        });
+
+        test('formatInterval should format hours', () => {
+            expect(debugHelper.formatInterval(3600000)).toBe('1h');
+            expect(debugHelper.formatInterval(7200000)).toBe('2h');
+        });
+
+        test('formatInterval should handle infinite', () => {
+            expect(debugHelper.formatInterval(0)).toBe('infinite');
+        });
+
+        test('ANSI formatting functions should wrap text', () => {
+            expect(debugHelper.title('test')).toContain('test');
+            expect(debugHelper.key('test')).toContain('test');
+            expect(debugHelper.val('test')).toContain('test');
+        });
+    });
 });
+

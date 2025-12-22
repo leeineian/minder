@@ -86,6 +86,91 @@ describe('Database - Reminders', () => {
     });
 });
 
+describe('Database - Guild Config', () => {
+    test('should set and get guild config', () => {
+        const guildId = 'guild123';
+        const config = { prefix: '!', autoLog: true };
+        
+        db.setGuildConfig(guildId, config);
+        const retrieved = db.getGuildConfig(guildId);
+        
+        expect(retrieved).toEqual(config);
+    });
+
+    test('should return null for non-existent guild config', () => {
+        const retrieved = db.getGuildConfig('missing_guild');
+        expect(retrieved).toBeNull();
+    });
+
+    test('should update existing guild config', () => {
+        const guildId = 'update_guild';
+        db.setGuildConfig(guildId, { a: 1 });
+        db.setGuildConfig(guildId, { a: 2, b: 3 });
+        
+        const retrieved = db.getGuildConfig(guildId);
+        expect(retrieved).toEqual({ a: 2, b: 3 });
+    });
+});
+
+describe('Database - AI Config', () => {
+    test('should set and get user prompt', () => {
+        const userId = 'user_ai';
+        const prompt = 'Custom prompt';
+        
+        db.ai.setPrompt(userId, prompt);
+        const retrieved = db.ai.getPrompt(userId);
+        
+        expect(retrieved).toBe(prompt);
+    });
+
+    test('should reset user prompt', () => {
+        const userId = 'reset_ai';
+        db.ai.setPrompt(userId, 'prompt');
+        db.ai.deletePrompt(userId);
+        
+        const retrieved = db.ai.getPrompt(userId);
+        expect(retrieved).toBeUndefined();
+    });
+});
+
+describe('Database - Webhook Looper', () => {
+    test('should add and manage loop configs', () => {
+        const channelId = 'chan_loop';
+        const config = { 
+            channelName: 'Test Chan',
+            channelType: 'channel',
+            rounds: 0,
+            interval: 60000, 
+            logs: true 
+        };
+        
+        db.webhookLooper.addLoopConfig(channelId, config);
+        const all = db.webhookLooper.getAllLoopConfigs();
+        
+        const found = all.find(c => c.channelId === channelId);
+        expect(found).toBeDefined();
+        expect(found.channelName).toBe('Test Chan');
+        expect(found.isRunning).toBe(0); // Default
+    });
+
+    test('should update loop state', () => {
+        const channelId = 'state_loop';
+        db.webhookLooper.addLoopConfig(channelId, { 
+            channelName: 'State Chan',
+            channelType: 'channel',
+            rounds: 0,
+            interval: 0
+        });
+        
+        db.webhookLooper.setLoopState(channelId, 1);
+        const all = db.webhookLooper.getAllLoopConfigs();
+        const found = all.find(c => c.channelId === channelId);
+        
+        expect(found.isRunning).toBe(1);
+    });
+});
+
+
 // ============================================================================
 // COMPONENTS (V2Builder)
 // ============================================================================
@@ -254,3 +339,87 @@ describe('Codebase Utilities', () => {
         expect(content).toBeNull();
     });
 });
+
+// ============================================================================
+// TIMER UTILITIES
+// ============================================================================
+const timer = require('../../src/utils/core/timer');
+
+describe('Timer Utilities', () => {
+    test('setLongTimeout should execute callback for short delay', async () => {
+        let executed = false;
+        const start = Date.now();
+        
+        await new Promise(resolve => {
+            timer.setLongTimeout(() => {
+                executed = true;
+                resolve();
+            }, 10);
+        });
+        
+        expect(executed).toBe(true);
+        expect(Date.now() - start).toBeGreaterThanOrEqual(10);
+    });
+
+    test('setLongTimeout should pass arguments to callback', async () => {
+        let receivedArg = null;
+        
+        await new Promise(resolve => {
+            timer.setLongTimeout((arg) => {
+                receivedArg = arg;
+                resolve();
+            }, 5, 'test-arg');
+        });
+        
+        expect(receivedArg).toBe('test-arg');
+    });
+
+    test('setLongTimeout cancel should prevent execution', async () => {
+        let executed = false;
+        
+        const t = timer.setLongTimeout(() => {
+            executed = true;
+        }, 20);
+        
+        t.cancel();
+        
+        await new Promise(resolve => setTimeout(resolve, 50));
+        expect(executed).toBe(false);
+    });
+
+    test('setLongTimeout should handle multiple steps for long delays', (done) => {
+        // We can't actually wait for a long delay in tests, 
+        // but we can verify the recursive logic works by mocking setTimeout
+        const originalSetTimeout = global.setTimeout;
+        const MAX_DELAY = 2147483647;
+        let setTimeouts = [];
+        
+        global.setTimeout = (cb, delay) => {
+            setTimeouts.push({ cb, delay });
+            return 123; // Fake ID
+        };
+        
+        let executed = false;
+        const longDelay = MAX_DELAY + 1000;
+        
+        timer.setLongTimeout(() => {
+            executed = true;
+        }, longDelay);
+        
+        // Should have scheduled the first step
+        expect(setTimeouts.length).toBe(1);
+        expect(setTimeouts[0].delay).toBe(MAX_DELAY);
+        
+        // Trigger the first callback
+        setTimeouts[0].cb();
+        
+        // Should have scheduled the second (final) step
+        expect(setTimeouts.length).toBe(2);
+        expect(setTimeouts[1].delay).toBe(1000);
+        
+        // Restore setTimeout before finishing
+        global.setTimeout = originalSetTimeout;
+        done();
+    });
+});
+

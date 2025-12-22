@@ -89,7 +89,8 @@ describe('Webhook Looper Script', () => {
         // Mock DB dependencies
         mock.module('../../src/utils/core/database', () => ({
             webhookLooper: {
-                getAllLoopConfigs: () => []
+                getAllLoopConfigs: mock(() => []),
+                setLoopState: mock(() => {})
             }
         }));
 
@@ -122,36 +123,62 @@ describe('Webhook Looper Script', () => {
         }
     });
 
-    test('should handle listPingCategories call', async () => {
-        const mockInteraction = {
-            reply: mock(async () => {}),
-            guild: { id: 'test123' }
-        };
+    test('should auto-resume running loops during initialize', async () => {
+        const db = require('../../src/utils/core/database');
+        const mockClient = createMockClient();
+        
+        // Setup mock to return a running loop
+        db.webhookLooper.getAllLoopConfigs.mockReturnValue([
+            { channelId: 'auto_chan', channelName: 'Auto', channelType: 'channel', rounds: 0, interval: 60000, isRunning: 1 }
+        ]);
 
-        try {
-            await webhookPinger.listPingCategories(mockInteraction);
-            expect(mockInteraction.reply).toHaveBeenCalled();
-        } catch (error) {
-            // Expected in test env
-            expect(true).toBe(true);
-        }
+        // Mock channels.fetch to verify startLoop starts
+        mockClient.channels.fetch = mock(async () => ({ 
+            id: 'auto_chan', 
+            name: 'Auto',
+            type: 0, // GuildText
+            permissionsFor: () => ({ has: () => true }),
+            guild: { members: { me: { permissions: { has: () => true } } } }
+        }));
+
+        await webhookLooper.initialize(mockClient);
+        
+        // Use a small delay for async operations inside initialize
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        expect(mockClient.channels.fetch).toHaveBeenCalledWith('auto_chan');
     });
 
-    test('should handle resetPingCategories call', async () => {
-        const mockInteraction = {
-            reply: mock(async () => {}),
-            guild: { id: 'test123' }
-        };
+    test('should update DB state when starting/stopping loops', async () => {
+        const db = require('../../src/utils/core/database');
+        const { createMockInteraction, createMockCommandOptions } = require('../helpers/mockDiscord');
+        const mockClient = createMockClient();
+        
+        // Setup DB to return a config so initialize populates configuredChannels
+        db.webhookLooper.getAllLoopConfigs.mockReturnValue([
+            { channelId: 'chan1', channelName: 'Chan 1', channelType: 'channel', rounds: 0, interval: 60000, isRunning: 0 }
+        ]);
+        
+        await webhookLooper.initialize(mockClient);
 
-        try {
-            await webhookPinger.resetPingCategories(mockInteraction);
-            expect(mockInteraction.reply).toHaveBeenCalled();
-        } catch (error) {
-            // Expected in test env
-            expect(true).toBe(true);
-        }
+        const mockInteraction = createMockInteraction({
+            client: mockClient,
+            options: createMockCommandOptions([
+                { name: 'channel', value: 'chan1', type: 3 }, // STRING
+                { name: 'logs', value: false, type: 5 } // BOOLEAN
+            ])
+        });
+
+        // Mock getChannel specifically as createMockCommandOptions handle it differently
+        mockInteraction.options.getChannel = mock(() => ({ id: 'chan1', type: 0 }));
+
+        // We can test startLoops which calls startLoop which updates DB
+        await webhookLooper.startLoops(mockInteraction);
+        expect(db.webhookLooper.setLoopState).toHaveBeenCalled();
     });
 });
+
+
 
 // ============================================================================
 // STATUS ROTATOR SCRIPT

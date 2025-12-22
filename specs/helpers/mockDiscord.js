@@ -16,11 +16,15 @@ function createMockClient() {
         commands: new Map(),
         componentHandlers: new Map(),
         guilds: {
-            cache: new Map(),
+            cache: Object.assign(new Map(), {
+                first: function() { return this.values().next().value; }
+            }),
             fetch: mock(async (id) => createMockGuild({ id }))
         },
         channels: {
-            cache: new Map(),
+            cache: Object.assign(new Map(), {
+                first: function() { return this.values().next().value; }
+            }),
             fetch: mock(async (id) => createMockChannel({ id }))
         },
         ws: {
@@ -171,6 +175,7 @@ function createMockInteraction(options = {}) {
         id: options.id || 'interaction123',
         type: options.type || 2, // 2 = ApplicationCommand
         user: options.user || createMockUser(),
+        member: options.member || createMockMember(),
         guild: options.guild || createMockGuild(),
         guildId: options.guildId || '987654321',
         channel: options.channel || createMockChannel(),
@@ -191,6 +196,7 @@ function createMockInteraction(options = {}) {
         editReply: mock(async (response) => {
             return { flags: response.flags };
         }),
+        fetchReply: mock(async () => createMockMessage()),
         update: mock(async (response) => {
             return { flags: response.flags };
         })

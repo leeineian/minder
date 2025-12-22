@@ -20,9 +20,22 @@ const ANSI = {
 };
 
 const fmt = ANSI;
+
+/**
+ * Strips ANSI escape codes from a string
+ * @param {string} str 
+ * @returns {string} Clean string
+ */
+const stripAnsi = (str) => typeof str === 'string' ? str.replace(/\x1B\[\d+m/g, '') : str;
+
 const title = (text) => `${fmt.pink}${text}${fmt.reset}`;
+title.plain = (text) => text;
+
 const key = (text) => `${fmt.pink}> ${text}:${fmt.reset}`;
+key.plain = (text) => `> ${text}:`;
+
 const val = (text) => `${fmt.pink_bold}${text}${fmt.reset}`;
+val.plain = (text) => text;
 
 /**
  * Format milliseconds to human-readable interval
@@ -38,6 +51,7 @@ function formatInterval(ms) {
 
 module.exports = {
     ANSI,
+    stripAnsi,
     title,
     key,
     val,

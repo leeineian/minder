@@ -193,7 +193,7 @@ module.exports = {
 
         // Final summary
             await interaction.editReply({
-                content: `✅ **Purge Complete**\n\nDeleted **${val(totalDeleted)}** webhook(s) from **${val(category.name)}**.`,
+                content: `✅ **Purge Complete**\n\nDeleted **${val.plain(totalDeleted)}** webhook(s) from **${val.plain(category.name)}**.`,
                 components: []
             });
     },
@@ -214,7 +214,7 @@ module.exports = {
             }
 
             return interaction.reply({ 
-                content: `🛑 Stopped all **${val(loopIds.length)}** running loops.`, 
+                content: `🛑 Stopped all **${val.plain(loopIds.length)}** running loops.`, 
                 flags: MessageFlags.Ephemeral 
             });
         } else {
@@ -345,7 +345,7 @@ module.exports = {
                     }
 
                     const container = V2Builder.container([
-                        V2Builder.textDisplay(`🛑 **Action Complete**\n\nStopped all **${val(loopIds.length)}** running loops.`),
+                        V2Builder.textDisplay(`🛑 **Action Complete**\n\nStopped all **${val.plain(loopIds.length)}** running loops.`),
                     ]);
 
                     await interaction.update({

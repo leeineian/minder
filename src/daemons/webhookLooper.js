@@ -759,7 +759,7 @@ function startLoop(channelId, data, interaction, logCallback, startTime, executi
                 
                 // Wait random delay before next iteration
                 if (isAlive()) {
-                    log(`⏳ Waiting ${val(formatInterval(randomDelay))} before next iteration...`, true);
+                    log(`⏳ ${val(`Waiting ${formatInterval(randomDelay)} before next iteration...`)}`, true);
                     
                     // Use a promise-based sleep that we can "interrupt" if needed, 
                     // though for now clearing the timeout in stopLoopInternal and checking isAlive is enough

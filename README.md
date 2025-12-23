@@ -1,77 +1,227 @@
-# minder
+# Minder
 
-An app for The Mindscape discord server.
+[![Go Version](https://img.shields.io/github/go-mod/go-version/leeineian/minder)](https://go.dev/)
+[![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/leeineian/minder)](https://goreportcard.com/report/github.com/leeineian/minder)
 
-## setup
+A high-performance Discord bot written in **Go** with **discordgo**, featuring slash commands, background daemons, and a powerful webhook stress testing system.
 
-1.  **clone/open project**: ensure you are in the `minder` directory.
-2.  **install dependencies**:
-    ```bash
-    bun install
-    ```
-3.  **configure environment**:
-    - make an `.env` file.
-    - fill in your `DISCORD_TOKEN` and `CLIENT_ID`.
-    - fill in `GUILD_ID` and `ROLE_ID` (required for role color feature).
+## ✨ Features
 
-## running the app
+- **⏰ Reminders**: Schedule reminders with natural language time parsing
+- **🤖 AI Chat**: Talk to AI (basic implementation)
+- **😺 Cat Commands**: Make the bot say things
+- **🔧 Debug Tools**: Admin utilities including webhook stress testing
+- **🌈 Status Rotator**: Auto-rotating bot status
+- **🎨 Role Color Rotator**: Automatically change role colors
 
-1.  **register commands**:
-    run this once (or whenever you change commands):
-    ```bash
-    bun run sync
-    ```
-    if you provided a `GUILD_ID`, commands will appear immediately in that server. if not, it may take up to an hour to appear globally.
+### 🔥 **Webhook Looper** (High-Performance)
+The crown jewel of this rewrite - a Goroutine-based webhook stress testing tool that can handle thousands of concurrent loops without blocking.
 
-2.  **start the app**:
-    ```bash
-    bun start
-    ```
-    or for development with hot-reload:
-    ```bash
-    bun run dev
-    ```
+## 🏗️ Architecture
 
-## architecture
-
-### file structure
-- `src/commands`: Slash command definitions.
-- `src/events`: Event listeners (ready, interactionCreate).
-- `src/scripts`: Background services (StatusRotator, WebhookPinger, AI).
-- `src/utils`: Shared utilities.
-    - `auditLogger.js`: Discord logging.
-    - `consoleLogger.js`: Terminal logging.
-    - `database.js`: Centralized DB repository access.
-    - `reminderScheduler.js`: Robust reminder handling logic.
-
-### key systems
-
-#### database (`bun:sqlite`)
-the bot uses a local SQLite database with WAL mode enabled for performance. access is abstracted through repositories in `src/utils/db/repo`.
-
-#### reminder scheduler
-reminders are persistent. on startup, `src/events/ready.js` loads all pending reminders from the DB and re-schedules them using `reminderScheduler.js`. this ensures no reminders are lost during restarts.
-
-#### webhook pinger
-a stress-testing tool (`/debug webhook-pinger`) designed to handle rate limits and optimize throughput using parallel execution.
-
-#### ai chat
-integrated with `LLM7.io`, handling context-aware conversations with memory barriers and dynamic context sizing.
-
-## test usage
-
-in Discord, type:
-`/say message:Hello World`
-
-the app will reply with an ephemeral message "Hello World".
-
-## process management
-
-### correctly stopping the app
-to stop the app, click inside the terminal running it and press **`Ctrl + C`**. this sends a shutdown signal to the process.
-
-### to kill all running app processes:
-```bash
-# Linux/Mac
-bun run stop
+```mermaid
+graph TB
+    subgraph "Minder Bot"
+        Main[main.go] --> Config[Config Loader]
+        Main --> Logger[Structured Logger]
+        Main --> Bot[Bot Manager]
+        
+        Bot --> Discord[Discord Session]
+        Bot --> DB[(SQLite Database)]
+        Bot --> Commands[Command Registry]
+        Bot --> Daemons[Daemon Manager]
+        
+        Commands --> Reminder[Reminder Cmd]
+        Commands --> AI[AI Chat Cmd]
+        Commands --> Cat[Cat Cmd]
+        Commands --> Debug[Debug Cmd]
+        
+        Daemons --> StatusDaemon[Status Rotator]
+        Daemons --> ColorDaemon[Role Color]
+        Daemons --> AIChatDaemon[AI Listener]
+        Daemons --> LooperDaemon[Webhook Looper]
+        Daemons --> Scheduler[Reminder Scheduler]
+        
+        DB -.-> Reminder
+        DB -.-> Scheduler
+        DB -.-> LooperDaemon
+    end
+    
+    Discord -.->|Events| Bot
+    Discord -.->|Send Messages| Daemons
+    Discord -.->|Execute| Commands
 ```
+
+## 🚀 Tech Stack
+
+- **Language**: Go 1.23+
+- **Discord Library**: `discordgo`
+- **Database**: SQLite (`modernc.org/sqlite` - pure Go)
+- **Logging**: `log/slog` (structured logging)
+- **Testing**: Go's built-in testing framework
+
+## 📦 Setup
+
+### Prerequisites
+- Go 1.21 or higher
+- Discord bot token ([Get one here](https://discord.com/developers/applications))
+
+### Installation
+
+1. **Clone the repository**
+```bash
+git clone https://github.com/leeineian/minder.git
+cd minder
+```
+
+2. **Configure environment**
+```bash
+cp .env.example .env
+# Edit .env with your Discord bot token and configuration
+```
+
+3. **Build the bot**
+```bash
+make build
+# or
+go build -o bin/minder cmd/minder/main.go
+```
+
+4. **Run the bot**
+```bash
+./bin/minder
+# or
+make run
+```
+
+## 🎮 Commands
+
+| Command | Description |
+|---------|-------------|
+| `/reminder set <message> <when>` | Set a reminder |
+| `/reminder list` | List your reminders |
+| `/cat say <message>` | Make the bot say something |
+| `/ai chat <message>` | Talk to AI |
+| `/debug webhook-looper ...` | Webhook stress testing (Admin only) |
+
+## 🛠️ Development
+
+### Running Tests
+```bash
+# Run all tests
+make test
+
+# Run tests with coverage
+make test-coverage
+
+# View coverage report
+open coverage.html
+```
+
+### Linting & Formatting
+```bash
+# Run all linters
+make lint
+
+# Format code
+make fmt
+
+# Check formatting
+make fmt-check
+```
+
+### Docker
+
+```bash
+# Build Docker image
+make docker-build
+
+# Run with docker-compose
+make docker-run
+
+# Stop containers
+docker-compose down
+```
+
+## 📁 Project Structure
+
+```
+minder/
+├── cmd/
+│   └── minder/          # Application entry point
+├── internal/
+│   ├── bot/            # Discord bot core logic
+│   ├── commands/       # Slash command implementations
+│   │   ├── ai/         # AI chat commands
+│   │   ├── cat/        # Cat commands
+│   │   ├── debug/      # Debug commands
+│   │   └── reminder/   # Reminder commands
+│   ├── config/         # Configuration management
+│   ├── daemons/        # Background services
+│   │   ├── aichat/     # AI chat listener
+│   │   ├── looper/     # Webhook looper
+│   │   ├── rolecolor/  # Role color rotator
+│   │   ├── scheduler/  # Reminder scheduler
+│   │   └── status/     # Status rotator
+│   ├── database/       # Database operations
+│   └── logger/         # Structured logging
+├── .github/
+│   └── workflows/      # CI/CD pipelines
+├── Dockerfile          # Multi-stage Go build
+├── docker-compose.yml  # Container orchestration
+└── Makefile           # Build automation
+```
+
+## 🔧 Configuration
+
+Key environment variables (see `.env.example` for full list):
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DISCORD_TOKEN` | ✅ | Your Discord bot token |
+| `CLIENT_ID` | ✅ | Discord application ID |
+| `GUILD_ID` | ❌ | Guild ID for instant command registration |
+| `DATABASE_PATH` | ❌ | Path to SQLite database (default: `./data.db`) |
+| `LOG_LEVEL` | ❌ | Logging level: `debug`, `info`, `warn`, `error` (default: `info`) |
+| `ENVIRONMENT` | ❌ | `production` for JSON logs, `development` for text (default: `development`) |
+
+## 🧪 Testing
+
+The project includes comprehensive unit tests:
+- **Config loading** and validation
+- **Database operations** with concurrency
+- **Logger initialization** and output
+- **Command registration** system
+
+Current coverage: **~60%** of core packages
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and development process.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📝 License
+
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+
+## 🔗 Links
+
+- [Report Bug](https://github.com/leeineian/minder/issues/new?labels=bug)
+- [Request Feature](https://github.com/leeineian/minder/issues/new?labels=enhancement)
+- [View Changelog](CHANGELOG.md)
+
+## 🙏 Acknowledgments
+
+- Built with [discordgo](https://github.com/bwmarrin/discordgo)
+- Powered by [modernc.org/sqlite](https://gitlab.com/cznic/sqlite)
+- Inspired by modern Go best practices
+
+---
+
+Made with ❤️ and Go

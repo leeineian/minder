@@ -12,6 +12,7 @@ services:
 
     # Persist database across restarts
     volumes:
+      - ./data:/app/data
       - ./data.db:/app/data.db
       - ./data.db-shm:/app/data.db-shm
       - ./data.db-wal:/app/data.db-wal
@@ -35,3 +36,11 @@ services:
 
     # Network mode (adjust if needed)
     network_mode: bridge
+
+    # Health check (optional)
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep minder || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

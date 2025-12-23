@@ -1,8 +1,7 @@
-# Dependency Directories
-node_modules/
-
 # Environment Variables
 .env
+.env.local
+.env.*.local
 
 # Discloud
 discloud/
@@ -10,15 +9,36 @@ discloud.config
 .discloudignore
 
 # Database
-data.db
+*.db
 *.db-shm
 *.db-wal
 
+# Build Output
+bin/
+dist/
+
 # Runtime & Process
 .bot.pid
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+*.log
 
-# System
+# Testing
+*.test
+*.out
+coverage.txt
+coverage.html
+*.coverprofile
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
+
+# Go specific
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib

@@ -5,7 +5,7 @@ const { sanitizeInput, validateLength, validateColor, ALLOWED_COLORS } = require
 
 // Configuration constants
 const { ANSI_COLORS, ANSI_RESET, getVisualWidth, wrapText } = require('./.helper');
-const MAX_MESSAGE_LENGTH = 280;
+const MAX_MESSAGE_LENGTH = 2000;
 const MIN_MESSAGE_LENGTH = 1;
 const BUBBLE_TEXT_WIDTH = 30;
 const CAT_ASCII_WIDTH = 13;

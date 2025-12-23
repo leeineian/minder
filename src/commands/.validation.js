@@ -193,7 +193,7 @@ function validateMinimumInterval(timestamp, minPastMs) {
 const FORBIDDEN_PATTERNS = {
     SCRIPT_TAGS: /<script[^>]*>.*?<\/script>/gi,
     HTML_TAGS: /<[^>]+>/g,
-    DISCORD_TOKEN: /[MN][A-Za-z\d]{23}\.[\w-]{6}\.[\w-]{27}/g,
+    DISCORD_TOKEN: /[\w-]{24,28}\.[\w-]{6,7}\.[\w-]{27,}/g,
     EXCESSIVE_MENTIONS: /(@(everyone|here)){2,}/gi,
     URL_SCHEMES: /^(javascript|data|vbscript):/i
 };
